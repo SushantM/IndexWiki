@@ -4,3 +4,11 @@
 *.jar
 *.war
 *.ear
+
+
+*.xml
+data/*
+output/*
+primaryIndex*
+tempDump*
+secondaryIndex*
