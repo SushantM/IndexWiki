@@ -21,13 +21,14 @@ public class ReadXML extends DefaultHandler {
 	SecondIndex secIndex = new SecondIndex();
 	static String outFileDir;
 	int p;
+	long time;
 
 	//public static void main (String args[]) throws Exception {
 	public void initiate(String args[]) throws Exception {
 		
-		deleteTempFiles(1000);
+		deleteTempFiles(1500);
 		
-		long time = System.currentTimeMillis();
+		time = System.currentTimeMillis();
 		XMLReader xr = XMLReaderFactory.createXMLReader();
 		ReadXML handler = new ReadXML();
 		
@@ -41,7 +42,7 @@ public class ReadXML extends DefaultHandler {
 		}
 	 	FileReader r = new FileReader(args[0]);
 	 	outFileDir=args[1];
-		deleteTempFiles(1000);
+
 		try {
 			xr.parse(new InputSource(r));
 		}
@@ -49,7 +50,7 @@ public class ReadXML extends DefaultHandler {
 			System.out.println("Invalid XML");
 			e.printStackTrace();
 		}
-	    System.out.println((System.currentTimeMillis() - time) / 1000f + " sec");
+	    System.out.println((System.currentTimeMillis() - time) / 1000f + " sec of total time");
     }
     public ReadXML () {
     	super();
@@ -75,10 +76,12 @@ public class ReadXML extends DefaultHandler {
 			found = 0;
 			p++;
 		}
-		if( p==10000 ) {
+		if( p==500 ) {
 			try {
+				long t=System.currentTimeMillis();
 				processor.dumpOnDisk();
-				System.out.println("dumped");
+				System.out.print("dumped "+processor.getFileCount()+" ");
+				System.out.println((System.currentTimeMillis() - t) / 1000f + " sec");
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -121,6 +124,8 @@ public class ReadXML extends DefaultHandler {
 			processor.dumpOnDisk();
 		} catch (IOException e) {}
     	fileN = processor.getFileCount();
+    	System.out.print("Starting merge");
+    	long t=System.currentTimeMillis();
     	PrimaryCreator optimusPrime = new PrimaryCreator(fileN, outFileDir);
     	try {
 			optimusPrime.createPrimaryIndex();
@@ -128,6 +133,8 @@ public class ReadXML extends DefaultHandler {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+    	System.out.println((System.currentTimeMillis() - t) / 1000f + " sec Merge complete");
+    	deleteTempFiles(fileN);
     }
 
     public void characters (char ch[], int start, int length) throws SAXException {

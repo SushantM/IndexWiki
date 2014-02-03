@@ -17,6 +17,7 @@ public class LineProcess {
 	TreeMap<String, HashMap<Integer,PageScore> > posting = new TreeMap<String, HashMap<Integer,PageScore> >();
 	int fileNo,noWords,fileNumber;
 	String outFileName;
+	private int bracketCount;
 	
 	public LineProcess() {
 		word.setLength(0);
@@ -33,18 +34,45 @@ public class LineProcess {
 		int lenght = line.length();
 		int i;
 		char c;
+		byte code = 0;
 		word.setLength(0);
-		for( i=0; i<lenght; i++ ) {
-			c = line.charAt(i);
-			if( ( c >='a'&& c<='z' ) || (c >='A'&& c<='Z') )
-				word.append(c);
-			else {
-				processWord( word, pageId, isTitle );
+		if( isTitle ) {
+			bracketCount = 0;
+			code = 0;
+			for( i=0; i<lenght; i++ ) {
+				c = line.charAt(i);
+				if( ( c >='a'&& c<='z' ) || (c >='A'&& c<='Z') )
+					word.append(c);
+				else {
+					processWord( word, pageId, code );
+				}
 			}
+			processWord( word, pageId , code );
 		}
-		processWord( word, pageId ,isTitle );
+		else {
+			code = 2;
+			for( i=0; i<lenght; i++ ) {
+				c = line.charAt(i);
+				if( c=='{') {
+					bracketCount++;
+					continue;
+				}
+				if( c=='}') {
+					bracketCount--;
+					continue;
+				}
+				if( ( c >='a'&& c<='z' ) || (c >='A'&& c<='Z') )
+					word.append(c);
+				else {
+					if( bracketCount>1 )
+						code = 1;
+					processWord( word, pageId, code );
+				}
+			}
+			processWord( word, pageId , code );
+		}
 	}
-	public void processWord( StringBuilder word,int pageId , boolean isTitle ) throws IOException {
+	public void processWord( StringBuilder word,int pageId , byte code ) throws IOException {
 		StringBuilder lower = new StringBuilder();
 		
 		lower.append(word.toString().toLowerCase());
@@ -57,20 +85,24 @@ public class LineProcess {
 				if( scorer==null ) 
 					scorer = new PageScore();
 					//System.out.println("Score is null");
-				if( isTitle )
-					scorer.t++;
-				else 
-					scorer.b++;
+				switch( code ) {
+					case 0 :  scorer.t++; break;
+					case 1 :  scorer.i++; break;
+					default : scorer.b++; break;
+						
+				}
 				posting.get(lower.toString()).put(pageId, scorer);
 
 			}
 			else {
 				noWords++;
 				PageScore scorer = new PageScore();
-				if( isTitle )
-					scorer.t++;
-				else 
-					scorer.b++;
+				switch( code ) {
+					case 0 :  scorer.t++; break;
+					case 1 :  scorer.i++; break;
+					default : scorer.b++; break;
+					
+				}
 				HashMap<Integer, PageScore > newWord = new HashMap<Integer, PageScore>();
 				newWord.put(pageId,scorer);
 				posting.put(lower.toString(), newWord);
@@ -106,10 +138,20 @@ public class LineProcess {
             	HashMap< Integer, PageScore > content = entry.getValue();
             	for( Integer docId : content.keySet() ) {
                      PageScore pgr = content.get(docId);
-                     line.append(docId.toString()+"t");
-                     line.append(pgr.t );
-                     line.append('b');
-                     line.append(pgr.b );
+                     line.append(docId.toString());
+                     if( pgr.t!= 0) {
+                    	 line.append('t');
+                    	 line.append(pgr.t );
+                     }
+                     if( pgr.i!=0 ) {
+                         line.append('i');
+                         line.append( pgr.i );
+                     }
+                     if( pgr.b!=0 ) {
+                         line.append('b');
+                         line.append( pgr.b );
+                     }
+
                      line.append(',');
             	}
             	line.append('\n');

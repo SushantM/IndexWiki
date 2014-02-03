@@ -31,6 +31,7 @@ public class PrimaryCreator {
 	}
 	public void createPrimaryIndex() throws IOException {
 		int i;
+		long offset=0;
 		final PriorityQueue<RecordForMerge> q =
 			new PriorityQueue<PrimaryCreator.RecordForMerge>(	fileCount,
 			new Comparator<RecordForMerge>() {
@@ -81,11 +82,13 @@ public class PrimaryCreator {
 		}
  		FileWriter fwr = new FileWriter( new File (outDir+"/primaryIndex") );
  		BufferedWriter wr = new BufferedWriter (fwr);
- 		
+ 		FileWriter fwr_sec = new FileWriter( new File (outDir+"/secondaryIndex") );
+ 		BufferedWriter wr_sec = new BufferedWriter (fwr_sec);
  		while(!q.isEmpty()) {
  			RecordForMerge smallest = q.peek();
  			StringBuilder lineTo = new StringBuilder();
- 			lineTo.append(smallest.key+'=') ;
+ 			StringBuilder keyTo = new StringBuilder();
+ 			keyTo.append(smallest.key+'=') ;
  			do {
  				RecordForMerge sameRecord = q.poll();
  				
@@ -116,7 +119,13 @@ public class PrimaryCreator {
 
  			wr.write(lineTo.toString());
  			wr.write('\n');
+ 			keyTo.append( offset );
+ 			wr_sec.write(keyTo.toString());
  			
+ 			wr_sec.write('\n'); 	
+ 			offset += lineTo.length();
  		}
+ 		wr.close();
+ 		wr_sec.close();
 	}
 }
