@@ -1,5 +1,9 @@
 
-
+/**
+ * Implements Porters Stemming Algorithm
+ * @author sushant
+ *
+ */
 class Stemmer {
 	private char[] b;
 	private int i,     /* offset into b */
@@ -13,6 +17,10 @@ class Stemmer {
 		i_end = 0;
 	}
 
+	/**
+	 * Gets a word and stores its stemmed values in itself
+	 * @param word
+	 */
 	public void stemDriver( StringBuilder word ) {
 		add(word.toString().toCharArray(),word.length());
 		stem();

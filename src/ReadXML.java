@@ -1,6 +1,8 @@
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 
 import org.xml.sax.SAXException;
@@ -10,24 +12,38 @@ import org.xml.sax.InputSource;
 import org.xml.sax.helpers.XMLReaderFactory;
 import org.xml.sax.helpers.DefaultHandler;
 
-
+/**
+ * Uses the SAX parser to parse the xml corpus of Wikipedia
+ * Calls LineProcess class to tokenise
+ * and PrimaryCreator to created Indexes
+ * @author sushant
+ *
+ */
 public class ReadXML extends DefaultHandler {
-	
-	boolean pageFlag, idFlag, titleFlag, bodyFlag;
+	boolean pageFlag,
+			idFlag,
+			titleFlag,
+			bodyFlag,
+			infoFlag,
+			catagoryFlag,
+			refFlag,
+			linkFlag,
+			valid;
 	int pageId,found,fileN;
 	StringBuilder buffer = new StringBuilder("");
 	StringBuilder title = new StringBuilder("");
+	StringBuilder body = new StringBuilder();
 	LineProcess processor=new LineProcess();
-	SecondIndex secIndex = new SecondIndex();
 	static String outFileDir;
-	int p;
+	int p;// current page count, when equals a threshold, dumps the posting list to disk
 	long time;
 
-	//public static void main (String args[]) throws Exception {
 	public void initiate(String args[]) throws Exception {
 		
 		deleteTempFiles(1500);
-		
+		File tempFile1 = new File(outFileDir+"/titles");
+		if( tempFile1.exists() )
+			tempFile1.delete();
 		time = System.currentTimeMillis();
 		XMLReader xr = XMLReaderFactory.createXMLReader();
 		ReadXML handler = new ReadXML();
@@ -48,7 +64,6 @@ public class ReadXML extends DefaultHandler {
 		}
 		catch(Exception e ) {
 			System.out.println("Invalid XML");
-			e.printStackTrace();
 		}
 	    System.out.println((System.currentTimeMillis() - time) / 1000f + " sec of total time");
     }
@@ -58,38 +73,51 @@ public class ReadXML extends DefaultHandler {
     	idFlag = false;
     	titleFlag  = false;
     	bodyFlag = false;
+		infoFlag = false;
+		catagoryFlag = false;
+		refFlag = false;
+		linkFlag = false;
+		valid = false;
     	found = 0;
     	p=0;
     }
+    /**
+     * Deletes first n temporary files
+     * @param n
+     */
     public void deleteTempFiles(int n) {
+
     	for( Integer i=0; i<n; i++ ) {
     		File tempFile = new File(outFileDir+"/tempDump_"+i.toString());
     		if( tempFile.exists() )
     			tempFile.delete();
     	}
     }
+
+    /**	Start Element method of SAX parser
+     * 
+     */
     public void startElement (String uri, String name,
 			      String qName, Attributes atts) throws SAXException {
   
+    	body.setLength(0);
 		if( qName.equalsIgnoreCase("page") ) {
 			pageFlag = true;
 			found = 0;
 			p++;
 		}
-		if( p==500 ) {
+		//value of P can be changed based on Size of XML corpus
+		// p=3000 performs normally on system with 4Gb ram.
+		// if Memory overflow occurs, set value of p  to lesser value like 500
+		if( p==3000 ) {
 			try {
-				long t=System.currentTimeMillis();
 				processor.dumpOnDisk();
-				System.out.print("dumped "+processor.getFileCount()+" ");
-				System.out.println((System.currentTimeMillis() - t) / 1000f + " sec");
+				System.gc();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
 			}
 			processor.posting.clear();
+			System.out.println("Dumped Index for "+ p+" pages to disk");
 			p=0;
 			
 		}
@@ -102,14 +130,6 @@ public class ReadXML extends DefaultHandler {
 		
 		if( pageFlag == true && qName.equalsIgnoreCase("title"))
 			titleFlag = true;
-		
-
-		/*if( 	qName.equalsIgnoreCase("revision")		||
-				qName.equalsIgnoreCase("timestamp")		||
-				qName.equalsIgnoreCase("contributor")	|| 
-				qName.equalsIgnoreCase("username")		||
-				qName.equalsIgnoreCase("comment")	)
-			skip = true;*/
     }
 
 
@@ -117,23 +137,17 @@ public class ReadXML extends DefaultHandler {
     }
     public void startDocument() throws SAXException {
      	processor.setOutDir(outFileDir);
-     	secIndex.setOutDir(outFileDir);
+
     }
     public void endDocument() throws SAXException {
     	try {
 			processor.dumpOnDisk();
 		} catch (IOException e) {}
     	fileN = processor.getFileCount();
-    	System.out.print("Starting merge");
-    	long t=System.currentTimeMillis();
     	PrimaryCreator optimusPrime = new PrimaryCreator(fileN, outFileDir);
     	try {
 			optimusPrime.createPrimaryIndex();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-    	System.out.println((System.currentTimeMillis() - t) / 1000f + " sec Merge complete");
+		} catch (IOException e) {}
     	deleteTempFiles(fileN);
     }
 
@@ -144,12 +158,10 @@ public class ReadXML extends DefaultHandler {
     	if( pageFlag == true ) {
     		if( idFlag == true) {
     			pageId = Integer.parseInt(buffer.toString());
-    			//System.out.println("Page id is : "+ pageId);
     			idFlag = false;
     			found++;
     		}
     		if( titleFlag == true ) {
-    			//System.out.println("Title is "+buffer);
     			title.setLength(0);
 				title.append(buffer);
 				
@@ -158,23 +170,29 @@ public class ReadXML extends DefaultHandler {
     		}
     		if( found==2 ) {
     			pageFlag = false;
+    		
     			try {
+    		 		FileWriter fwr= new FileWriter( new File (outFileDir+"/titles"),true );
+    		 		BufferedWriter wr = new BufferedWriter (fwr);
+    		 		StringBuilder titleLine=new StringBuilder();
+    		 		titleLine.append(pageId);
+    		 		titleLine.append('=');
+    		 		titleLine.append(title);
+ 
+    		 		wr.write(titleLine.toString());
+    		 		wr.write('\n');
+    		 		wr.close();
 					processor.parseLine( title, pageId, true );
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
+					
+				} catch (IOException e) {	}
     		}
     	}
     	else {
     		if( length-start > 2) {
-    				//System.out.println("Other is "+buffer);
-    				try {
+    			
+					try {
 						processor.parseLine( buffer, pageId, false );
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
+					} catch (IOException e) { }
     		}
     	}
     	buffer.setLength(0);

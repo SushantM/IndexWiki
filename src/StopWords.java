@@ -1,6 +1,10 @@
 
 import java.util.HashSet;
-
+/**
+ * Standard set of English Stopwords
+ * @author sushant
+ *
+ */
 public class StopWords {
 	int noOfStopWords;
 	String[] stopSt = {	"a",	"able",		"about",	"across",	"after",
@@ -27,14 +31,21 @@ public class StopWords {
 						"what",	"when",		"where",	"which",	"while",
 						"who",	"whom",		"why",		"will",		"with",
 						"would","yet",		"you",		"your", 	"",
-						"\n",	"\t"	};
+						"\n",	"\t",		"infobox",	"references","external",
+						"category"	};
 	HashSet <String> stop = new HashSet <String>();
 	public StopWords() {
 		int i;
-		noOfStopWords = 122;
+		noOfStopWords = stopSt.length;
 		for( i=0; i<noOfStopWords; i++)
 			stop.add(stopSt[i]);
 	}
+	/**
+	 * Returns true if word is a stopword or its lenght is less than 3
+	 * false for valid words
+	 * @param word
+	 * @return
+	 */
 	public boolean isStopWord(StringBuilder word ) {
 		if( word.length() < 3 )
 			return true;
